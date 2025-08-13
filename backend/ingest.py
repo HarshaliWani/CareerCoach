@@ -12,7 +12,7 @@ from langchain_core.documents import Document
 from retrieval import VectorStoreSingleton
 from config import get_settings
 
-RAW_DIR = Path("/workspace/backend/data/raw")
+RAW_DIR = Path("data/raw")
 
 KAGGLE_DATASETS = [
     "mtalhazafar/career-path-selection-challenges",
@@ -98,8 +98,10 @@ def main() -> None:
 
     print(f"Prepared {len(all_docs)} chunks. Indexing into Chroma at {settings.chroma_dir}...")
     store = VectorStoreSingleton.get_store()
-    store.add_documents(all_docs)
-    store.persist()
+    batch_size = 5000  # less than 5461
+    for i in range(0, len(all_docs), batch_size):
+        store.add_documents(all_docs[i:i+batch_size])
+    # store.persist()
     print("Ingestion complete.")
 
 
