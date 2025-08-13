@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List
 
-from langchain_openai import OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
@@ -19,7 +19,7 @@ class VectorStoreSingleton:
             return cls._instance
         settings = get_settings()
         Path(settings.chroma_dir).mkdir(parents=True, exist_ok=True)
-        embeddings = OpenAIEmbeddings(model=settings.embedding_model, api_key=settings.openai_api_key)
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         cls._instance = Chroma(persist_directory=settings.chroma_dir, embedding_function=embeddings)
         return cls._instance
 
