@@ -60,8 +60,12 @@ def stream_chat(session_id: str, user_input: str, user_profile: Dict | None = No
         web_snippets=web_snippets,
     )
 
-    # OpenAI streaming
-    client = OpenAI(api_key=settings.openai_api_key)
+    # xAI Grok via OpenAI-compatible client (fallback to OpenAI if not provided)
+    api_key = settings.xai_api_key or settings.openai_api_key
+    if settings.xai_api_key:
+        client = OpenAI(api_key=api_key, base_url=settings.xai_base_url)
+    else:
+        client = OpenAI(api_key=api_key)
 
     # Prepend system message; include last few history lines briefly as context
     history_messages = []
