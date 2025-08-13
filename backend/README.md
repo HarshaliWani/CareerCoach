@@ -2,7 +2,7 @@
 
 Requirements:
 - Python 3.13 with venv
-- xAI API key for Grok (preferred) or OpenAI API key as fallback
+- OpenRouter API key for Grok-3 (preferred) or xAI/OpenAI API key as fallback
 - Tavily API key (optional)
 
 Setup
@@ -24,8 +24,9 @@ pip install -r backend/requirements.txt
 3. Configure environment
 
 Copy `.env.example` to `.env` and set one of:
-- `XAI_API_KEY` (uses Grok via `MODEL_NAME=grok-3`), optional `XAI_BASE_URL` (default `https://api.x.ai/v1`)
-- or `OPENAI_API_KEY` (fallback) and set `MODEL_NAME` accordingly
+- `OPENROUTER_API_KEY` (uses `MODEL_NAME=x-ai/grok-3` via `OPENROUTER_BASE_URL`)
+- or `XAI_API_KEY` (uses Grok via `XAI_BASE_URL`)
+- or `OPENAI_API_KEY` (fallback)
 
 ```
 cp backend/.env.example backend/.env

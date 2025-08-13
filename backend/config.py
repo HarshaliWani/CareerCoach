@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # LLM/API keys
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     xai_api_key: str = Field(default="", alias="XAI_API_KEY")
+    openrouter_api_key: str = Field(default="", alias="OPENROUTER_API_KEY")
 
     # External services
     tavily_api_key: str = Field(default="", alias="TAVILY_API_KEY")
@@ -20,8 +21,9 @@ class Settings(BaseSettings):
     chroma_dir: str = Field(default="/workspace/backend/storage/chroma", alias="CHROMA_DIR")
 
     # Models and endpoints
-    llm_model_name: str = Field(default="grok-3", alias="MODEL_NAME")
+    llm_model_name: str = Field(default="x-ai/grok-3", alias="MODEL_NAME")
     xai_base_url: str = Field(default="https://api.x.ai/v1", alias="XAI_BASE_URL")
+    openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", alias="OPENROUTER_BASE_URL")
     embedding_model: str = Field(default="text-embedding-3-small", alias="EMBEDDING_MODEL")
 
     # Server
