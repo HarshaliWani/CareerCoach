@@ -2,8 +2,8 @@
 
 Requirements:
 - Python 3.13 with venv
-- OpenAI API key
-- Tavily API key (optional but recommended)
+- OpenRouter API key for Grok-3 (preferred) or GitHub Models/xAI/OpenAI as fallback
+- Tavily API key (optional)
 
 Setup
 
@@ -23,7 +23,11 @@ pip install -r backend/requirements.txt
 
 3. Configure environment
 
-Copy `.env.example` to `.env` and set `OPENAI_API_KEY`, `TAVILY_API_KEY`.
+Copy `.env.example` to `.env` and set one of:
+- `OPENROUTER_API_KEY` (uses `MODEL_NAME=x-ai/grok-3` via `OPENROUTER_BASE_URL`)
+- `GITHUB_MODELS_API_KEY` and `GITHUB_MODELS_BASE_URL` (to use GPT-4o via GitHub Models)
+- `XAI_API_KEY` (uses Grok via `XAI_BASE_URL`)
+- `OPENAI_API_KEY` (fallback)
 
 ```
 cp backend/.env.example backend/.env
@@ -45,7 +49,6 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 API
-- POST `/api/chat`
-- GET `/api/chat/stream?session_id=...&message=...`
+- POST `/api/chat` (streams also available at `/api/chat/stream`)
 - POST `/api/user`
 - GET `/api/user/{session_id}`

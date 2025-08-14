@@ -60,8 +60,16 @@ def stream_chat(session_id: str, user_input: str, user_profile: Dict | None = No
         web_snippets=web_snippets,
     )
 
-    # OpenAI streaming
-    client = OpenAI(api_key=settings.openai_api_key)
+    # Prefer OpenRouter, then GitHub Models, then xAI, then OpenAI
+    client: OpenAI
+    if settings.openrouter_api_key:
+        client = OpenAI(api_key=settings.openrouter_api_key, base_url=settings.openrouter_base_url)
+    elif settings.github_models_api_key and settings.github_models_base_url:
+        client = OpenAI(api_key=settings.github_models_api_key, base_url=settings.github_models_base_url)
+    elif settings.xai_api_key:
+        client = OpenAI(api_key=settings.xai_api_key, base_url=settings.xai_base_url)
+    else:
+        client = OpenAI(api_key=settings.openai_api_key)
 
     # Prepend system message; include last few history lines briefly as context
     history_messages = []
