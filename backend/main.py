@@ -7,6 +7,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from config import get_settings
 from db import Base, engine, SessionLocal
@@ -41,6 +42,7 @@ def get_db():
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(request: ChatRequest, db: Session = Depends(get_db)):
     # Ensure user exists
+    print("Received /api/chat request:", request.dict())
     user = db.query(User).filter_by(session_id=request.session_id).first()
     traits = {}
     if user and user.traits_json:
@@ -54,6 +56,7 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
 @app.get("/api/chat/stream")
 async def chat_stream(session_id: str, message: str, request: Request, db: Session = Depends(get_db)):
+    print(f"Received /api/chat/stream: session_id={session_id}, message={message}")
     user = db.query(User).filter_by(session_id=session_id).first()
     traits: Dict = {}
     if user and user.traits_json:
@@ -72,20 +75,41 @@ async def chat_stream(session_id: str, message: str, request: Request, db: Sessi
     return EventSourceResponse(event_generator())
 
 
+def upsert_user_in_db(db: Session, req: UpsertUserRequest) -> User:
+    user = db.query(User).filter_by(session_id=req.session_id).first()
+    if user:
+        # Update existing user
+        user.name = req.name or user.name
+        user.email = req.email or user.email
+        if req.traits is not None:
+            try:
+                user.traits_json = json.dumps(req.traits)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid traits JSON")
+    else:
+        # Insert new user
+        try:
+            user = User(
+                session_id=req.session_id,
+                name=req.name,
+                email=req.email,
+                traits_json=json.dumps(req.traits) if req.traits is not None else None,
+            )
+            db.add(user)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid user data")
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="User with this session_id already exists.")
+    return user
+
+
 @app.post("/api/user", response_model=UserResponse)
 def upsert_user(req: UpsertUserRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter_by(session_id=req.session_id).first()
-    if not user:
-        user = User(session_id=req.session_id)
-        db.add(user)
-    user.name = req.name or user.name
-    user.email = req.email or user.email
-    if req.traits is not None:
-        try:
-            user.traits_json = json.dumps(req.traits)
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid traits JSON")
-    db.commit()
+    print("Received /api/user payload:", req)
+    user = upsert_user_in_db(db, req)
     return UserResponse(
         session_id=user.session_id,
         name=user.name,

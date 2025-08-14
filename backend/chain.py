@@ -11,6 +11,9 @@ from memory import get_memory
 from retrieval import retrieve_relevant
 from prompt import build_prompt, SYSTEM_PROMPT
 
+MAX_SNIPPETS = 3
+MAX_SNIPPET_CHARS = 100
+
 
 def run_tavily_search(query: str, max_results: int = 3) -> List[str]:
     settings = get_settings()
@@ -31,9 +34,13 @@ def gather_context(session_id: str, user_input: str) -> Dict:
     memory, _ = get_memory(session_id)
 
     retrieved_docs = retrieve_relevant(user_input, k=5)
-    retrieved_snippets = [f"{d.page_content}\n(Source: {d.metadata.get('dataset','kb')})" for d in retrieved_docs]
+    retrieved_snippets = [
+        d.page_content[:MAX_SNIPPET_CHARS] + ("..." if len(d.page_content) > MAX_SNIPPET_CHARS else "")
+        + f"\n(Source: {d.metadata.get('dataset','kb')})"
+        for d in retrieved_docs[:MAX_SNIPPETS]
+    ]
 
-    web_snippets = run_tavily_search(user_input, max_results=3)
+    web_snippets = run_tavily_search(user_input, max_results=3)[:MAX_SNIPPETS]
 
     history_messages = memory.chat_memory.messages
     history_tuples = [[m.type, getattr(m, 'content', '')] for m in history_messages]
@@ -60,16 +67,11 @@ def stream_chat(session_id: str, user_input: str, user_profile: Dict | None = No
         web_snippets=web_snippets,
     )
 
+    #print("---------------------Composed prompt sent for LLM:--------------------------",prompt_text)
+
     # Prefer OpenRouter, then GitHub Models, then xAI, then OpenAI
-    client: OpenAI
-    if settings.openrouter_api_key:
-        client = OpenAI(api_key=settings.openrouter_api_key, base_url=settings.openrouter_base_url)
-    elif settings.github_models_api_key and settings.github_models_base_url:
-        client = OpenAI(api_key=settings.github_models_api_key, base_url=settings.github_models_base_url)
-    elif settings.xai_api_key:
-        client = OpenAI(api_key=settings.xai_api_key, base_url=settings.xai_base_url)
-    else:
-        client = OpenAI(api_key=settings.openai_api_key)
+    client = OpenAI(api_key=settings.github_models_api_key, base_url=settings.github_models_base_url)
+    
 
     # Prepend system message; include last few history lines briefly as context
     history_messages = []
@@ -80,17 +82,24 @@ def stream_chat(session_id: str, user_input: str, user_profile: Dict | None = No
             history_messages.append({"role": "assistant", "content": content})
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history_messages + [
-        {"role": "user", "content": prompt_text}
+        {"role": "user", "content": user_input}
     ]
+
+    print("Sending to LLM with model:", settings.llm_model_name)
+    print("Messages:", json.dumps(messages, indent=2))
+    # -----------------
 
     with client.chat.completions.stream(model=settings.llm_model_name, messages=messages) as stream:
         full_text = ""
         for event in stream:
+            # print("Model Stream event-------------------------", event)
             if event.type == "token":
                 token = event.token
+                print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------Model stream event(response):", repr(token))  # Debugging line
                 full_text += token
                 yield token
             elif event.type == "completed":
+                print("Full model response:", full_text)
                 # Update memory on completion
                 memory, _ = get_memory(session_id)
                 memory.chat_memory.add_user_message(user_input)
@@ -98,6 +107,7 @@ def stream_chat(session_id: str, user_input: str, user_profile: Dict | None = No
                 break
             elif event.type == "error":
                 err_msg = str(event.error)
+                print("Model error:", err_msg) 
                 yield f"\n[Error: {err_msg}]"
                 break
 
@@ -107,3 +117,16 @@ def chat_once(session_id: str, user_input: str, user_profile: Dict | None = None
     for token in stream_chat(session_id=session_id, user_input=user_input, user_profile=user_profile):
         chunks.append(token)
     return "".join(chunks)
+
+
+def build_prompt(user_input, user_profile, retrieved_snippets, web_snippets):
+    # Only add context if user_input is a career-related question
+    context = ""
+    if "career" in user_input.lower() or "job" in user_input.lower() or "study" in user_input.lower():
+        if user_profile:
+            context += f"[User Profile]\n" + "\n".join(f"{k}: {v}" for k, v in user_profile.items()) + "\n"
+        if retrieved_snippets:
+            context += "[Knowledge Base]\n" + "\n".join(retrieved_snippets) + "\n"
+        if web_snippets:
+            context += "[Web Results]\n" + "\n".join(web_snippets) + "\n"
+    return f"{context}User Message: {user_input}"

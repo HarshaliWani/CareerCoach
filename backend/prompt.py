@@ -45,4 +45,5 @@ def build_prompt(
         f"User Message: {user_input}\n"
         + "".join(blocks)
     )
+    print("---------------------------------------------------Prompt in prompt.py------------------------------------------",composed)
     return composed
