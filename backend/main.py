@@ -63,11 +63,12 @@ async def chat_stream(session_id: str, message: str, request: Request, db: Sessi
             traits = {}
 
     async def event_generator():
-        # Convert sync generator to async by iterating and yielding
         for token in stream_chat(session_id=session_id, user_input=message, user_profile=traits):
             if await request.is_disconnected():
                 break
             yield {"event": "message", "data": token}
+        # Signal end-of-stream
+        yield {"event": "end", "data": "END"}
 
     return EventSourceResponse(event_generator())
 

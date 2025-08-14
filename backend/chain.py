@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Generator
 import json
+import logging
 
 from openai import OpenAI
 from langchain_community.tools.tavily_search import TavilySearchResults
@@ -10,6 +11,8 @@ from config import get_settings
 from memory import get_memory
 from retrieval import retrieve_relevant
 from prompt import build_prompt, SYSTEM_PROMPT
+
+logger = logging.getLogger(__name__)
 
 
 def run_tavily_search(query: str, max_results: int = 3) -> List[str]:
@@ -62,14 +65,19 @@ def stream_chat(session_id: str, user_input: str, user_profile: Dict | None = No
 
     # Prefer OpenRouter, then GitHub Models, then xAI, then OpenAI
     client: OpenAI
+    provider = "openai"
     if settings.openrouter_api_key:
         client = OpenAI(api_key=settings.openrouter_api_key, base_url=settings.openrouter_base_url)
+        provider = "openrouter"
     elif settings.github_models_api_key and settings.github_models_base_url:
         client = OpenAI(api_key=settings.github_models_api_key, base_url=settings.github_models_base_url)
+        provider = "github-models"
     elif settings.xai_api_key:
         client = OpenAI(api_key=settings.xai_api_key, base_url=settings.xai_base_url)
+        provider = "xai"
     else:
         client = OpenAI(api_key=settings.openai_api_key)
+        provider = "openai"
 
     # Prepend system message; include last few history lines briefly as context
     history_messages = []
@@ -83,6 +91,9 @@ def stream_chat(session_id: str, user_input: str, user_profile: Dict | None = No
         {"role": "user", "content": prompt_text}
     ]
 
+    logger.info("Sending to LLM with model: %s via %s", settings.llm_model_name, provider)
+    logger.info("Messages: %s", json.dumps(messages, ensure_ascii=False, indent=2))
+
     with client.chat.completions.stream(model=settings.llm_model_name, messages=messages) as stream:
         full_text = ""
         for event in stream:
@@ -91,14 +102,18 @@ def stream_chat(session_id: str, user_input: str, user_profile: Dict | None = No
                 full_text += token
                 yield token
             elif event.type == "completed":
+                logger.info("LLM full response: %s", full_text)
                 # Update memory on completion
                 memory, _ = get_memory(session_id)
                 memory.chat_memory.add_user_message(user_input)
                 memory.chat_memory.add_ai_message(full_text)
+                # Signal end to SSE clients
+                yield "\n[END]"
                 break
             elif event.type == "error":
                 err_msg = str(event.error)
-                yield f"\n[Error: {err_msg}]"
+                logger.error("LLM error: %s", err_msg)
+                yield f"\n[Error: {err_msg}]\n[END]"
                 break
 
 
