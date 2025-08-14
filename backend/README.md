@@ -2,8 +2,8 @@
 
 Requirements:
 - Python 3.13 with venv
-- xAI API key for Grok (preferred) or OpenAI API key as fallback
-- Tavily API key (optional)
+- OpenAI API key
+- Tavily API key (optional but recommended)
 
 Setup
 
@@ -23,9 +23,7 @@ pip install -r backend/requirements.txt
 
 3. Configure environment
 
-Copy `.env.example` to `.env` and set one of:
-- `XAI_API_KEY` (uses Grok via `MODEL_NAME=grok-3`), optional `XAI_BASE_URL` (default `https://api.x.ai/v1`)
-- or `OPENAI_API_KEY` (fallback) and set `MODEL_NAME` accordingly
+Copy `.env.example` to `.env` and set `OPENAI_API_KEY`, `TAVILY_API_KEY`.
 
 ```
 cp backend/.env.example backend/.env
@@ -47,6 +45,7 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 API
-- POST `/api/chat` (streams also available at `/api/chat/stream`)
+- POST `/api/chat`
+- GET `/api/chat/stream?session_id=...&message=...`
 - POST `/api/user`
 - GET `/api/user/{session_id}`
