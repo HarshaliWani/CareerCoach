@@ -10,7 +10,7 @@ from config import get_settings
 
 def get_message_history(session_id: str) -> BaseChatMessageHistory:
     settings = get_settings()
-    return SQLChatMessageHistory(session_id=session_id, connection_string=settings.database_url)
+    return SQLChatMessageHistory(session_id=session_id, connection=settings.database_url)
 
 
 def get_memory(session_id: str) -> Tuple[ConversationBufferMemory, BaseChatMessageHistory]:
