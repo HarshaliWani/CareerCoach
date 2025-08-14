@@ -60,14 +60,12 @@ def stream_chat(session_id: str, user_input: str, user_profile: Dict | None = No
         web_snippets=web_snippets,
     )
 
-    # Prefer OpenRouter (Grok-3), then xAI, then OpenAI
-    client: OpenAI
-    if settings.openrouter_api_key:
-        client = OpenAI(api_key=settings.openrouter_api_key, base_url=settings.openrouter_base_url)
-    elif settings.xai_api_key:
-        client = OpenAI(api_key=settings.xai_api_key, base_url=settings.xai_base_url)
+    # xAI Grok via OpenAI-compatible client (fallback to OpenAI if not provided)
+    api_key = settings.xai_api_key or settings.openai_api_key
+    if settings.xai_api_key:
+        client = OpenAI(api_key=api_key, base_url=settings.xai_base_url)
     else:
-        client = OpenAI(api_key=settings.openai_api_key)
+        client = OpenAI(api_key=api_key)
 
     # Prepend system message; include last few history lines briefly as context
     history_messages = []
