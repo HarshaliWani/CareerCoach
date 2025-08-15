@@ -92,14 +92,14 @@ def stream_chat(session_id: str, user_input: str, user_profile: Dict | None = No
     with client.chat.completions.stream(model=settings.llm_model_name, messages=messages) as stream:
         full_text = ""
         for event in stream:
-            # print("Model Stream event-------------------------", event)
-            if event.type == "token":
-                token = event.token
-                print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------Model stream event(response):", repr(token))  # Debugging line
+            #print("Model Stream event-------------------------", event)
+            if event.type == "content.delta":
+                token = event.delta
+                print("----------------------------------------------Model stream event(response):", repr(token))  # Debugging line
                 full_text += token
                 yield token
-            elif event.type == "completed":
-                print("Full model response:", full_text)
+            elif event.type in {"content.done", "completed"}:
+                print("*******************************************************Full model response:", full_text)
                 # Update memory on completion
                 memory, _ = get_memory(session_id)
                 memory.chat_memory.add_user_message(user_input)

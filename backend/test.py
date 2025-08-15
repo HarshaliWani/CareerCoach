@@ -2,7 +2,7 @@ import os
 from openai import OpenAI
 
 # Load from environment variables
-API_KEY = "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"
+API_KEY = "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"
 BASE_URL = "https://models.github.ai/inference"
 MODEL_NAME = "openai/gpt-4o"
 
