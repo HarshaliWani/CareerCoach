@@ -9,7 +9,7 @@ AI-powered career coaching platform that helps students analyze performance and 
 
 🛠 Tech Stack
 - React
-- Node.js
+- Langchain
 - Python
 - FastAPI
 
